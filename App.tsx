@@ -1,108 +1,118 @@
-import React from 'react';
-import type {PropsWithChildren} from 'react';
+import React, {useState} from 'react';
 import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
   StyleSheet,
-  Text,
-  useColorScheme,
   View,
+  Text,
+  Button,
+  TextInput,
+  FlatList,
+  Image,
+  Alert,
+  SafeAreaView,
 } from 'react-native';
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
-
-type SectionProps = PropsWithChildren<{
+interface Item {
+  id: string;
   title: string;
-}>;
-
-function Section({children, title}: SectionProps): JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
 }
 
-function App(): JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
+const App = () => {
+  const [inputValue, setInputValue] = useState('');
+  const [data, setData] = useState<Item[]>([
+    {id: '1', title: 'React Native'},
+    {id: '2', title: 'Official Components'},
+    {id: '3', title: 'FlatList Example'},
+  ]);
 
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
+  const initSpark = () => {
+    console.log('initSpark');
   };
 
+  const handleAddItem = () => {
+    if (inputValue.trim() === '') {
+      Alert.alert('Error', 'Input cannot be empty!');
+      return;
+    }
+    setData([...data, {id: Date.now().toString(), title: inputValue}]);
+    setInputValue('');
+  };
+
+  const renderItem = ({item}: {item: Item}) => (
+    <View style={styles.listItem}>
+      <Text style={styles.listItemText}>{item.title}</Text>
+    </View>
+  );
+
   return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
+    <SafeAreaView style={styles.container}>
+      <Text style={styles.header}>React Native Official Components</Text>
+      <Text style={styles.subHeader}>Test Spark:</Text>
+      <Button title="Init Spark" onPress={initSpark} />
+
+      <Text style={styles.subHeader}>Add an Item:</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Type something..."
+        value={inputValue}
+        onChangeText={setInputValue}
       />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-        </View>
-      </ScrollView>
+      <Button title="Add Item" onPress={handleAddItem} />
+      <Text style={styles.subHeader}>Item List:</Text>
+      <FlatList
+        data={data}
+        keyExtractor={item => item.id}
+        renderItem={renderItem}
+        contentContainerStyle={styles.list}
+      />
     </SafeAreaView>
   );
-}
+};
 
 const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
+  container: {
+    flex: 1,
+    padding: 20,
+    backgroundColor: '#f9f9f9',
   },
-  sectionTitle: {
+  header: {
     fontSize: 24,
-    fontWeight: '600',
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginVertical: 5,
+    color: '#333',
   },
-  sectionDescription: {
-    marginTop: 8,
+  subHeader: {
     fontSize: 18,
-    fontWeight: '400',
+    fontWeight: '600',
+    marginVertical: 5,
+    color: '#555',
   },
-  highlight: {
-    fontWeight: '700',
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    padding: 5,
+    marginBottom: 5,
+    backgroundColor: '#fff',
+  },
+  list: {
+    marginTop: 5,
+  },
+  listItem: {
+    padding: 5,
+    backgroundColor: '#e0f7fa',
+    borderRadius: 8,
+    marginVertical: 5,
+  },
+  listItemText: {
+    fontSize: 16,
+    color: '#00796b',
+  },
+  logo: {
+    width: 200,
+    height: 200,
+    alignSelf: 'center',
+    marginVertical: 5,
   },
 });
 
