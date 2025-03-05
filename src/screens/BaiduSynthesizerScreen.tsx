@@ -20,6 +20,7 @@ class BaiduSynthesizerScreen extends Component {
     this.state = {
       text: '百度语音合成适用于泛阅读、订单播报、智能硬件等应用场景，让您的应用、设备开口说话，更具个性。',
       status: '☆语音合成☆',
+      currentIndex: 0,
     };
   }
 
@@ -110,6 +111,23 @@ class BaiduSynthesizerScreen extends Component {
     });
   };
 
+  changeText = () => {
+    const { currentIndex } = this.state;
+    const textList = [
+      '上海华夏财富投资管理有限公司成立于2016年1月4日，是华夏基金管理有限公司的全资子公司，中国基金业协会联席会员，拥有中国证监会颁发的基金销售牌照，并在2019年10月，首批获得证监会基金投资顾问业务试点资格。目前在北京、广州、深圳、南京、成都、太原、西安、宁波、武汉、郑州、天津、青岛、重庆、大连设有分公司，为客户提供一对一的财富管理服务。华夏财富的理念是以客户为中心，通过对客户家庭金融资产和理财需求的深入了解，提供定制化的投资建议服务，帮助客户实现财富的保值、增值与传承，立足客户财富管理和资产配置需求，通过线上+线下业务融合发展，利用投资顾问与金融科技双轮驱动，实现优势互补和业务协同发展。',
+      '方兴未艾的科技革命中，鲜为人知的古籍记载着蒙古草原的校勘秘闻。他屏息凝神地校对着殷红印章下的曲谱，却因强行熬夜导致心广体胖的身材愈发臃肿。',
+      '狡黠的饕餮之徒，在福祉庇护下豢养着罹难者的后裔。他们穿过阴霾笼罩的粗犷山谷，用缫丝机盥洗着赧然失笑的僭越者。',
+      '武则天自创的"曌"字辉映日月，古玉雕师摩挲着玊的瑕疵，韩式茶寮里巭者正在冲泡"尛"字茶饼。突然，三犬成猋奔过，惊动了妊娠中的莘莘学子。',
+      '在参差不齐的碑拓中，他揣度着吐蕃王朝的秘史。那个曾叱咤风云的单于，在龟裂的陶片上用炮制丹药的秘方，给骠骑将军的创伤止血。婢女端着紫檀木盘，颤巍巍地穿过槛窗，瞥见龟兹古谱里记载的腊肉腌制法。',
+      '耄耋老者在氍毹上捋须沉吟，脚边蹲踞的猞猁正睥睨着菡萏池中的锦鲤。忽闻门外有趑趄声，原是驿丞捎来讣告：彳亍于阛阓的仳离妇人，因罹患瘰疬而薨逝于彘肩宴上。',
+      '刍荛者攀陟嶙峋山崖，瞥见鹁鸪掠过薜荔丛。他掣肘阻止同伴刬伐柽柳，却见瘗玉碑旁有耒耜与耧车，箴言镌刻着“畋不掩群，不涸泽而渔”。远处鞑靼人的鞲鹰正睃巡着羱羊。',
+    ];
+    this.handleTextChange(textList[currentIndex]);
+    this.setState(prevState => ({
+      currentIndex: (prevState.currentIndex + 1) % textList.length,
+    }));
+  };
+
   render() {
     const {text, status} = this.state;
     return (
@@ -140,6 +158,9 @@ class BaiduSynthesizerScreen extends Component {
           multiline
           onChangeText={this.handleTextChange}
         />
+        <View>
+          <Button title={'切换预设文字'} onPress={this.changeText} />
+        </View>
       </View>
     );
   }
