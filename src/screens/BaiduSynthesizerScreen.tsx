@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import React, {Component} from 'react';
 import {
   Button,
   PermissionsAndroid,
@@ -55,11 +55,11 @@ class BaiduSynthesizerScreen extends Component {
     data: SynthesizerData<SynthesizerResultData | string | undefined>,
   ) => {
     console.log(data);
-    this.setState({ status: data.msg });
+    this.setState({status: data.msg});
   };
 
   onSynthesizerError = (data: SynthesizerData<SynthesizerResultError>) => {
-    this.setState({ status: data.msg });
+    this.setState({status: data.msg});
     ToastAndroid.show(
       `${data.msg}，错误码: 【${data.data.code}】，${data.data.description}`,
       ToastAndroid.LONG,
@@ -97,7 +97,7 @@ class BaiduSynthesizerScreen extends Component {
   };
 
   handleTextChange = (text: string) => {
-    this.setState({ text });
+    this.setState({text});
   };
 
   pause = () => {
@@ -119,7 +119,7 @@ class BaiduSynthesizerScreen extends Component {
   };
 
   render() {
-    const { text, status } = this.state;
+    const {text, status} = this.state;
     return (
       <View style={styles.container}>
         <Text style={styles.welcome}>{status}</Text>
