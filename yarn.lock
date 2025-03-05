@@ -5806,13 +5806,18 @@ react-devtools-core@^4.27.2:
 
 react-is@^16.13.1:
   version "16.13.1"
-  resolved "https://repo.huaweicloud.com/repository/npm/react-is/-/react-is-16.13.1.tgz#789729a4dc36de2999dc156dd6c1d9c18cea56a4"
+  resolved "https://registry.yarnpkg.com/react-is/-/react-is-16.13.1.tgz#789729a4dc36de2999dc156dd6c1d9c18cea56a4"
   integrity sha512-24e6ynE2H+OKt4kqsOvNd8kBpV65zoxbA4BVsEOB3ARVWQki/DHzaUoC5KuON/BiccDaCCTZBuOcfZs70kR8bQ==
 
 react-is@^17.0.1:
   version "17.0.2"
   resolved "https://repo.huaweicloud.com/repository/npm/react-is/-/react-is-17.0.2.tgz#e691d4a8e9c789365655539ab372762b0efb54f0"
   integrity sha512-w2GsyukL62IJnlaff/nRegPQR94C/XXamvMWmSHRJ4y7Ts/4ocGRmTHvOs8PSE6pB3dWOrD/nueuU5sduBsQ4w==
+
+react-native-baidu-asr@^1.4.0:
+  version "1.4.0"
+  resolved "https://registry.yarnpkg.com/react-native-baidu-asr/-/react-native-baidu-asr-1.4.0.tgz#6aada386cc2cc78f16a0fcc190b0217d193ccbe4"
+  integrity sha512-rLNe7Ewm27dKp/AuCMSAPix289Qjp7ds4NZz1DAA78px6Qc6VH1vFV/WJEzgKslPi/zuZuJ2dV6xYfvx7heVWQ==
 
 react-native@0.72.3:
   version "0.72.3"
@@ -6771,7 +6776,7 @@ uri-js@^4.2.2:
 
 use-sync-external-store@^1.0.0:
   version "1.4.0"
-  resolved "https://repo.huaweicloud.com/repository/npm/use-sync-external-store/-/use-sync-external-store-1.4.0.tgz#adbc795d8eeb47029963016cefdf89dc799fcebc"
+  resolved "https://registry.yarnpkg.com/use-sync-external-store/-/use-sync-external-store-1.4.0.tgz#adbc795d8eeb47029963016cefdf89dc799fcebc"
   integrity sha512-9WXSPC5fMv61vaupRkCKCxsPxBocVnwakBEkMIHHpkTTg6icbJtg6jzgtLDm4bl3cSHAca52rYWih0k4K3PfHw==
 
 util-deprecate@^1.0.1, util-deprecate@~1.0.1:
