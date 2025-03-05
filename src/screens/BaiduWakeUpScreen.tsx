@@ -1,7 +1,6 @@
 import React, {Component} from 'react';
 import {
   Button,
-  PermissionsAndroid,
   ScrollView,
   StyleSheet,
   Text,
@@ -26,13 +25,6 @@ class BaiduWakeUpScreen extends Component {
   }
 
   componentDidMount() {
-    PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.RECORD_AUDIO)
-      .then(result => {
-        console.log(result);
-      })
-      .catch(error => {
-        console.log(error);
-      });
     BaiduWakeUp.init({
       APP_ID: BAIDU_APP_ID,
       APP_KEY: BAIDU_API_KEY,

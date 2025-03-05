@@ -1,117 +1,133 @@
 import React, {useState} from 'react';
 import {
-  StyleSheet,
+  Image,
   View,
   Text,
-  Button,
-  TextInput,
-  FlatList,
-  Alert,
-  SafeAreaView,
+  TouchableOpacity,
+  StyleSheet,
+  PermissionsAndroid,
 } from 'react-native';
-interface Item {
-  id: string;
-  title: string;
-}
+import BaiduWakeUpScreen from './screens/BaiduWakeUpScreen';
+import BaiduAsrScreen from './screens/BaiduAsrScreen';
+import BaiduSynthesizerScreen from './screens/BaiduSynthesizerScreen';
 
 const App = () => {
-  const [inputValue, setInputValue] = useState('');
-  const [data, setData] = useState<Item[]>([
-    {id: '1', title: 'React Native'},
-    {id: '2', title: 'Official Components'},
-    {id: '3', title: 'FlatList Example'},
-  ]);
+  const [activeTab, setActiveTab] = useState('WakeUp');
+  const [isInitialized, setIsInitialized] = useState(false);
+  const tabs = [
+    {id: 'WakeUp', title: '语音唤醒'},
+    {id: 'ASR', title: '实时语音识别'},
+    {id: 'Synthesis', title: '语音合成'},
+  ];
 
-  const initSpark = () => {
-    console.log('initSpark');
-  };
-
-  const handleAddItem = () => {
-    if (inputValue.trim() === '') {
-      Alert.alert('Error', 'Input cannot be empty!');
-      return;
-    }
-    setData([...data, {id: Date.now().toString(), title: inputValue}]);
-    setInputValue('');
-  };
-
-  const renderItem = ({item}: {item: Item}) => (
-    <View style={styles.listItem}>
-      <Text style={styles.listItemText}>{item.title}</Text>
-    </View>
-  );
+  // 进入页面就获取Audio权限
+  React.useEffect(() => {
+    PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.RECORD_AUDIO)
+      .then(result => {
+        console.log('获取权限成功：', result);
+      })
+      .catch(error => {
+        console.log('获取权限失败：', error);
+      });
+  }, []);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Text style={styles.header}>React Native Official Components</Text>
-      <Text style={styles.subHeader}>Test Spark:</Text>
-      <Button title="Init Spark" onPress={initSpark} />
+    <View style={styles.container}>
+      {!isInitialized ? (
+        <View style={styles.initContainer}>
+          <Image
+            source={{
+              uri: 'https://p8.itc.cn/images01/20220719/758eb26b8bdc4ffd82497ae37d7c711f.jpeg',
+            }}
+            style={styles.initLogo}
+          />
+          <Text style={styles.initTitle}>语音技术DEMO</Text>
+          <TouchableOpacity
+            style={styles.startButton}
+            onPress={() => setIsInitialized(true)}>
+            <Text style={styles.buttonText}>开始体验</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <>
+          {/* Tab 标签栏 */}
+          <View style={styles.tabBar}>
+            {tabs.map(tab => (
+              <TouchableOpacity
+                key={tab.id}
+                style={[
+                  styles.tabItem,
+                  activeTab === tab.id && styles.activeTab,
+                ]}
+                onPress={() => setActiveTab(tab.id)}>
+                <Text
+                  style={
+                    activeTab === tab.id ? styles.activeText : styles.text
+                  }>
+                  {tab.title}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
 
-      <Text style={styles.subHeader}>Add an Item:</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Type something..."
-        value={inputValue}
-        onChangeText={setInputValue}
-      />
-      <Button title="Add Item" onPress={handleAddItem} />
-      <Text style={styles.subHeader}>Item List:</Text>
-      <FlatList
-        data={data}
-        keyExtractor={item => item.id}
-        renderItem={renderItem}
-        contentContainerStyle={styles.list}
-      />
-    </SafeAreaView>
+          {/* Tab 动态内容区域 */}
+          <View style={styles.content}>
+            {activeTab === 'WakeUp' && <BaiduWakeUpScreen />}
+            {activeTab === 'ASR' && <BaiduAsrScreen />}
+            {activeTab === 'Synthesis' && <BaiduSynthesizerScreen />}
+          </View>
+        </>
+      )}
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  initContainer: {
     flex: 1,
-    padding: 20,
-    backgroundColor: '#f9f9f9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F5FCFF',
   },
-  header: {
+  initTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginVertical: 5,
+    marginBottom: 30,
     color: '#333',
   },
-  subHeader: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginVertical: 5,
-    color: '#555',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    padding: 5,
-    marginBottom: 5,
-    backgroundColor: '#fff',
-  },
-  list: {
-    marginTop: 5,
-  },
-  listItem: {
-    padding: 5,
-    backgroundColor: '#e0f7fa',
-    borderRadius: 8,
-    marginVertical: 5,
-  },
-  listItemText: {
-    fontSize: 16,
-    color: '#00796b',
-  },
-  logo: {
+  initLogo: {
     width: 200,
     height: 200,
-    alignSelf: 'center',
-    marginVertical: 5,
   },
+  startButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 40,
+    paddingVertical: 15,
+    borderRadius: 25,
+    elevation: 3,
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: '500',
+  },
+  container: {flex: 1},
+  tabBar: {
+    flexDirection: 'row',
+    backgroundColor: '#f0f0f0',
+    paddingVertical: 10,
+  },
+  tabItem: {
+    flex: 1,
+    alignItems: 'center',
+    padding: 10,
+  },
+  activeTab: {
+    borderBottomWidth: 2,
+    borderBottomColor: '#007AFF',
+  },
+  text: {color: '#666'},
+  activeText: {color: '#007AFF', fontWeight: 'bold'},
+  content: {flex: 1, padding: 20},
 });
 
 export default App;

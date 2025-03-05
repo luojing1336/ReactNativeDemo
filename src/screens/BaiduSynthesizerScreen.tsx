@@ -1,7 +1,6 @@
 import React, {Component} from 'react';
 import {
   Button,
-  PermissionsAndroid,
   StyleSheet,
   Text,
   TextInput,
@@ -25,13 +24,6 @@ class BaiduSynthesizerScreen extends Component {
   }
 
   componentDidMount() {
-    PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.RECORD_AUDIO)
-      .then(result => {
-        console.log(result);
-      })
-      .catch(error => {
-        console.log(error);
-      });
     BaiduSynthesizer.initialTts();
     this.resultListener = BaiduSynthesizer.addResultListener(
       this.onSynthesizerResult,

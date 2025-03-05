@@ -6,7 +6,6 @@ import {
   ToastAndroid,
   ScrollView,
   Button,
-  PermissionsAndroid,
 } from 'react-native';
 import {
   BaiduAsr,
@@ -30,13 +29,6 @@ export default class BaiduAsrScreen extends Component {
   }
 
   componentDidMount() {
-    PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.RECORD_AUDIO)
-      .then(result => {
-        console.log(result);
-      })
-      .catch(error => {
-        console.log(error);
-      });
     BaiduAsr.init({
       APP_ID: BAIDU_APP_ID,
       APP_KEY: BAIDU_API_KEY,
