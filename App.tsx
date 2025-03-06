@@ -6,7 +6,6 @@ import {
   Button,
   TextInput,
   FlatList,
-  Image,
   Alert,
   SafeAreaView,
 } from 'react-native';
@@ -24,7 +23,7 @@ const App = () => {
     {id: '3', title: 'FlatList Example'},
   ]);
 
-  const initSpark = () => {
+  const handleTestFunction = () => {
     console.log('initSpark');
   };
 
@@ -45,9 +44,9 @@ const App = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.header}>React Native Official Components</Text>
-      <Text style={styles.subHeader}>Test Spark:</Text>
-      <Button title="Init Spark" onPress={initSpark} />
+      <Text style={styles.header}>React Native Test Demo</Text>
+      <Text style={styles.subHeader}>Test:</Text>
+      <Button title="Test Function" onPress={handleTestFunction} />
 
       <Text style={styles.subHeader}>Add an Item:</Text>
       <TextInput
