@@ -37,11 +37,11 @@ const App = () => {
         <View style={styles.initContainer}>
           <Image
             source={{
-              uri: 'https://p8.itc.cn/images01/20220719/758eb26b8bdc4ffd82497ae37d7c711f.jpeg',
+              uri: 'https://avatars.githubusercontent.com/u/8200078?s=200&v=4',
             }}
             style={styles.initLogo}
           />
-          <Text style={styles.initTitle}>语音技术DEMO</Text>
+          <Text style={styles.initTitle}>百度云语音技术DEMO</Text>
           <TouchableOpacity
             style={styles.startButton}
             onPress={() => setIsInitialized(true)}>
@@ -95,6 +95,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   initLogo: {
+    margin: 20,
     width: 200,
     height: 200,
   },
