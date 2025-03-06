@@ -15,7 +15,9 @@ import {
 import {BAIDU_API_KEY, BAIDU_APP_ID, BAIDU_SECRET_KEY} from '../constants';
 
 class BaiduWakeUpScreen extends Component {
-  constructor(props) {
+  resultListener: any;
+  errorListener: any;
+  constructor(props: {}) {
     super(props);
     this.state = {
       status: '☆唤醒词：查理查理 或者 小夏小夏 或者 小靖小靖☆',

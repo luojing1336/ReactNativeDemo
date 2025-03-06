@@ -15,7 +15,9 @@ import {
 } from 'react-native-baidu-asr';
 
 class BaiduSynthesizerScreen extends Component {
-  constructor(props) {
+  resultListener: any;
+  errorListener: any;
+  constructor(props: {}) {
     super(props);
     this.state = {
       text: '百度语音合成适用于泛阅读、订单播报、智能硬件等应用场景，让您的应用、设备开口说话，更具个性。',
@@ -112,7 +114,7 @@ class BaiduSynthesizerScreen extends Component {
   };
 
   changeText = () => {
-    const { currentIndex } = this.state;
+    const {currentIndex} = this.state;
     const textList = [
       '上海华夏财富投资管理有限公司成立于2016年1月4日，是华夏基金管理有限公司的全资子公司，中国基金业协会联席会员，拥有中国证监会颁发的基金销售牌照，并在2019年10月，首批获得证监会基金投资顾问业务试点资格。目前在北京、广州、深圳、南京、成都、太原、西安、宁波、武汉、郑州、天津、青岛、重庆、大连设有分公司，为客户提供一对一的财富管理服务。华夏财富的理念是以客户为中心，通过对客户家庭金融资产和理财需求的深入了解，提供定制化的投资建议服务，帮助客户实现财富的保值、增值与传承，立足客户财富管理和资产配置需求，通过线上+线下业务融合发展，利用投资顾问与金融科技双轮驱动，实现优势互补和业务协同发展。',
       '方兴未艾的科技革命中，鲜为人知的古籍记载着蒙古草原的校勘秘闻。他屏息凝神地校对着殷红印章下的曲谱，却因强行熬夜导致心广体胖的身材愈发臃肿。',

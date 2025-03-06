@@ -18,7 +18,10 @@ import {
 import {BAIDU_API_KEY, BAIDU_APP_ID, BAIDU_SECRET_KEY} from '../constants';
 
 export default class BaiduAsrScreen extends Component {
-  constructor(props) {
+  resultListener: any;
+  errorListener: any;
+  volumeListener: any;
+  constructor(props: {}) {
     super(props);
     this.state = {
       status: '☆语音识别☆',
