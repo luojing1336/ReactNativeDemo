@@ -67,19 +67,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logoPandaDesk: {
-    width: 400,
-    height: 400,
-    marginVertical: 10,
+    width: 300,
+    height: 300,
   },
   logoPandaHi: {
     width: 400,
     height: 400,
-    marginVertical: 10,
   },
   logoRobotHello: {
     width: 400,
     height: 400,
-    marginVertical: 10,
   },
 });
 
