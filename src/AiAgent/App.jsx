@@ -17,63 +17,60 @@ import LoadingIndicator from './components/LoadingIndicator';
 import {lightTheme} from './constants/theme';
 import {useChatMessages} from './hooks/useChatMessages';
 
+const OPENAI_API_KEY = 'sk-DTldwHBcIBEIGW1QytwKZTXHrSU6r7sAYRb8FmiQlkAzExmv';
+const OPENAI_BASE_URL = 'https://api.chatanywhere.tech/v1';
+
 const App = () => {
   const {messages, isLoading, error, sendChatMessage, createNewConversation} =
     useChatMessages();
   const scrollViewRef = useRef(null);
-  const [streamingMessage, setStreamingMessage] = useState(null);
+  const [isStreaming, setIsStreaming] = useState(false);
 
-  // 当有新消息时，滚动到最底部
   useEffect(() => {
-    if ((messages.length > 0 || streamingMessage) && scrollViewRef.current) {
-      setTimeout(() => {
-        scrollViewRef.current?.scrollToEnd({animated: true});
-      }, 100);
-    }
-  }, [messages, streamingMessage]);
+    scrollViewRef.current?.scrollToEnd({animated: true});
+  }, [messages]);
 
   const handleSend = async content => {
     try {
-      // 创建一个临时的流式消息对象
-      setStreamingMessage({
-        id: 'streaming-' + Date.now(),
-        role: 'assistant',
-        content: '',
-        isStreaming: true,
+      setIsStreaming(true);
+
+      // 发送请求到 OpenAI API
+      const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${OPENAI_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4',
+          messages: [{role: 'user', content}],
+          stream: true, // 开启流式输出
+        }),
       });
 
-      // 发送消息并获取流式响应
-      await sendChatMessage(content, partialResponse => {
-        // 更新流式消息内容
-        setStreamingMessage(prev => ({
-          ...prev,
-          content: prev.content + partialResponse,
-        }));
-      });
+      if (!response.ok) {
+        throw new Error(`OpenAI API 请求失败: ${response.statusText}`);
+      }
 
-      // 消息完成后清除流式状态
-      setStreamingMessage(null);
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let accumulatedMessage = '';
+
+      while (true) {
+        const {value, done} = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, {stream: true});
+        accumulatedMessage += chunk;
+
+        sendChatMessage(accumulatedMessage);
+      }
     } catch (error) {
-      console.error(error);
-      setStreamingMessage(null);
+      console.error('发送消息错误:', error);
+    } finally {
+      setIsStreaming(false);
     }
   };
-
-  const handleNewChat = () => {
-    // TODO:新对话功能实现
-    createNewConversation();
-    setStreamingMessage(null);
-  };
-
-  const handleMenu = () => {
-    // TODO:菜单功能实现
-  };
-
-  // 合并正常消息和流式消息
-  const displayMessages = [...messages];
-  if (streamingMessage) {
-    displayMessages.push(streamingMessage);
-  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -83,15 +80,13 @@ const App = () => {
       />
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={styles.mainContainer}>
-          <View style={styles.headerContainer}>
-            <Header
-              title="AI助手"
-              onMenuPress={handleMenu}
-              onNewChat={handleNewChat}
-            />
-          </View>
+          <Header
+            title="AI助手"
+            onMenuPress={() => {}}
+            onNewChat={createNewConversation}
+          />
 
-          {displayMessages.length === 0 ? (
+          {messages.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>开始新的对话吧</Text>
             </View>
@@ -99,27 +94,19 @@ const App = () => {
             <ScrollView
               ref={scrollViewRef}
               style={styles.scrollView}
-              contentContainerStyle={styles.chatContainer}
-              showsVerticalScrollIndicator={true}
-              onContentSizeChange={() => {
-                scrollViewRef.current?.scrollToEnd({animated: true});
-              }}>
-              {displayMessages.map(item => (
-                <ChatBubble
-                  key={item.id}
-                  message={item}
-                  isStreaming={item.isStreaming}
-                />
+              contentContainerStyle={styles.chatContainer}>
+              {messages.map(item => (
+                <ChatBubble key={item.id} message={item} />
               ))}
             </ScrollView>
           )}
 
-          {isLoading && !streamingMessage && <LoadingIndicator />}
+          {isLoading && <LoadingIndicator />}
 
           <View style={styles.inputContainer}>
             <ChatInput
               onSend={handleSend}
-              isLoading={isLoading || !!streamingMessage}
+              isLoading={isLoading || isStreaming}
             />
           </View>
         </View>
@@ -129,27 +116,10 @@ const App = () => {
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: lightTheme.colors.background,
-  },
-  mainContainer: {
-    flex: 1,
-    backgroundColor: lightTheme.colors.background,
-  },
-  headerContainer: {
-    width: '100%',
-    paddingVertical: 36,
-    borderBottomWidth: 1,
-    borderBottomColor: lightTheme.colors.border || '#E5E5E5',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  chatContainer: {
-    padding: 16,
-    paddingBottom: 80,
-  },
+  safeArea: {flex: 1, backgroundColor: lightTheme.colors.background},
+  mainContainer: {flex: 1},
+  scrollView: {flex: 1},
+  chatContainer: {padding: 16, paddingBottom: 80},
   inputContainer: {
     position: 'absolute',
     bottom: 0,
@@ -160,11 +130,7 @@ const styles = StyleSheet.create({
     borderTopColor: lightTheme.colors.border || '#E5E5E5',
     paddingVertical: 8,
   },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  emptyContainer: {flex: 1, justifyContent: 'center', alignItems: 'center'},
   emptyText: {
     fontSize: 16,
     color: lightTheme.colors.text || '#666',
