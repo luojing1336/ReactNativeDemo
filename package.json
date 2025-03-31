@@ -14,7 +14,8 @@
     "lottie-react-native": "^7.2.2",
     "react": "18.2.0",
     "react-native": "0.72.3",
-    "react-native-baidu-asr": "^1.4.0"
+    "react-native-baidu-asr": "^1.4.0",
+    "react-native-sse": "^1.2.1"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

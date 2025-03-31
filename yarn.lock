@@ -5870,6 +5870,11 @@ react-native-baidu-asr@^1.4.0:
   resolved "https://registry.yarnpkg.com/react-native-baidu-asr/-/react-native-baidu-asr-1.4.0.tgz#6aada386cc2cc78f16a0fcc190b0217d193ccbe4"
   integrity sha512-rLNe7Ewm27dKp/AuCMSAPix289Qjp7ds4NZz1DAA78px6Qc6VH1vFV/WJEzgKslPi/zuZuJ2dV6xYfvx7heVWQ==
 
+react-native-sse@^1.2.1:
+  version "1.2.1"
+  resolved "https://registry.yarnpkg.com/react-native-sse/-/react-native-sse-1.2.1.tgz#d7d063173bf5f3cd2cb6978141ec5d57591dff4b"
+  integrity sha512-zejanlScF+IB9tYnbdry0MT34qjBXbiV/E72qGz33W/tX1bx8MXsbB4lxiuPETc9v/008vYZ60yjIstW22VlVg==
+
 react-native@0.72.3:
   version "0.72.3"
   resolved "https://repo.huaweicloud.com/repository/npm/react-native/-/react-native-0.72.3.tgz#f8d85ec81c9f3592d091ec8e9ac1694956a72765"

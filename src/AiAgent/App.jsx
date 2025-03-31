@@ -16,12 +16,10 @@ import ChatInput from './components/ChatInput';
 import LoadingIndicator from './components/LoadingIndicator';
 import {lightTheme} from './constants/theme';
 import {useChatMessages} from './hooks/useChatMessages';
-
-const OPENAI_API_KEY = 'sk-DTldwHBcIBEIGW1QytwKZTXHrSU6r7sAYRb8FmiQlkAzExmv';
-const OPENAI_BASE_URL = 'https://api.chatanywhere.tech/v1';
+import {sendMessageToOpenAI} from './constants/OPENAI_CONFIG';
 
 const App = () => {
-  const {messages, isLoading, error, sendChatMessage, createNewConversation} =
+  const {messages, isLoading, sendChatMessage, createNewConversation} =
     useChatMessages();
   const scrollViewRef = useRef(null);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -31,45 +29,20 @@ const App = () => {
   }, [messages]);
 
   const handleSend = async content => {
-    try {
-      setIsStreaming(true);
-
-      // 发送请求到 OpenAI API
-      const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${OPENAI_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-4',
-          messages: [{role: 'user', content}],
-          stream: true, // 开启流式输出
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`OpenAI API 请求失败: ${response.statusText}`);
-      }
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let accumulatedMessage = '';
-
-      while (true) {
-        const {value, done} = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value, {stream: true});
-        accumulatedMessage += chunk;
-
-        sendChatMessage(accumulatedMessage);
-      }
-    } catch (error) {
-      console.error('发送消息错误:', error);
-    } finally {
-      setIsStreaming(false);
-    }
+    setIsStreaming(true);
+    sendMessageToOpenAI(
+      content,
+      chunk => {
+        console.log(chunk);
+        sendChatMessage(chunk); //逐步更新消息
+      },
+      error => {
+        console.error(error);
+      },
+      () => {
+        setIsStreaming(false);
+      },
+    );
   };
 
   return (
