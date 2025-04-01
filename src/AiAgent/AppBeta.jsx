@@ -1,27 +1,73 @@
-import React, {useState, useRef, useCallback} from 'react';
+import React, {useState, useRef, useCallback, useEffect} from 'react';
 import {
   View,
   Text,
-  Button,
-  ActivityIndicator,
   StyleSheet,
-  ScrollView,
+  FlatList,
   TextInput,
+  TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import EventSource from 'react-native-sse';
 import {OPENAI_API_KEY, OPENAI_BASE_URL} from './constants/OPENAI_CONFIG';
 
-// 聊天气泡组件，根据 isUser 判断不同样式，并显示加载状态和时间戳
+// 打字机文本组件：逐字显示新加入的字符，并显示闪烁光标
+const TypewriterText = ({text, speed = 50, loading}) => {
+  const [displayedText, setDisplayedText] = useState('');
+  const [showCursor, setShowCursor] = useState(true);
+
+  useEffect(() => {
+    if (text.length > displayedText.length) {
+      const interval = setInterval(() => {
+        setDisplayedText(prev => {
+          const next = text.slice(0, prev.length + 1);
+          if (next.length === text.length) {
+            clearInterval(interval);
+          }
+          return next;
+        });
+      }, speed);
+      return () => clearInterval(interval);
+    } else {
+      setDisplayedText(text);
+    }
+  }, [displayedText.length, speed, text]);
+
+  useEffect(() => {
+    if (loading) {
+      const cursorInterval = setInterval(() => {
+        setShowCursor(prev => !prev);
+      }, 500);
+      return () => clearInterval(cursorInterval);
+    } else {
+      setShowCursor(false);
+    }
+  }, [loading]);
+
+  return (
+    <Text style={styles.bubbleText}>
+      {displayedText}
+      {loading && showCursor && <Text style={styles.cursor}>|</Text>}
+    </Text>
+  );
+};
+
 const ChatBubble = ({message, isUser, loading, time}) => {
-  // 格式化时间（可根据需求调整格式）
   const formattedTime = time ? new Date(time).toLocaleTimeString() : '';
   return (
     <View style={[styles.bubble, isUser ? styles.userBubble : styles.aiBubble]}>
       {loading && !message ? (
-        <ActivityIndicator size="small" color={isUser ? '#000' : '#555'} />
+        <ActivityIndicator
+          size="small"
+          color={isUser ? '#FFFFFF' : '#D5F9C1'}
+        />
       ) : (
         <>
-          <Text style={styles.bubbleText}>{message}</Text>
+          {!isUser && loading ? (
+            <TypewriterText text={message} loading={loading} />
+          ) : (
+            <Text style={styles.bubbleText}>{message}</Text>
+          )}
           {formattedTime !== '' && (
             <Text style={styles.timeText}>{formattedTime}</Text>
           )}
@@ -39,10 +85,8 @@ const useAiChat = () => {
   // 发送用户消息并发起流式请求
   const sendMessage = useCallback(
     userMessage => {
-      // 添加用户消息（包含时间戳）
       const userMsg = {role: 'user', content: userMessage, time: new Date()};
       setConversation(prev => [...prev, userMsg]);
-
       setLoading(true);
       let aiMessage = '';
 
@@ -60,7 +104,7 @@ const useAiChat = () => {
         },
         method: 'POST',
         body: JSON.stringify({
-          model: 'gpt-3.5-turbo',
+          model: 'gpt-4o-mini',
           messages,
           max_tokens: 600,
           n: 1,
@@ -77,17 +121,23 @@ const useAiChat = () => {
       });
 
       es.addEventListener('message', event => {
+        if (event.data === '[DONE]') {
+          // SSE 数据传输完毕，关闭连接
+          es.removeAllEventListeners();
+          es.close();
+          setLoading(false);
+          return;
+        }
         if (event.data !== '[DONE]') {
           try {
             const data = JSON.parse(event.data);
             const delta = data.choices?.[0]?.delta?.content;
             if (delta !== undefined) {
               aiMessage += delta;
-              // 如果最后一条消息是 AI，则更新其内容；否则添加一条新消息，附带时间戳
+              // 若最后一条消息为 AI，则更新内容；否则添加新消息
               setConversation(prev => {
                 const last = prev[prev.length - 1];
                 if (last && last.role === 'ai') {
-                  // 更新时间戳只在首次添加时设置
                   return [
                     ...prev.slice(0, prev.length - 1),
                     {...last, content: aiMessage},
@@ -120,8 +170,6 @@ const useAiChat = () => {
         es.removeAllEventListeners();
       });
     },
-    // 注意依赖 conversation 会导致 sendMessage 每次对话更新时重新创建，
-    // 可根据需要使用函数式更新避免依赖问题
     [conversation],
   );
 
@@ -140,8 +188,8 @@ const useAiChat = () => {
 const App = () => {
   const {conversation, loading, sendMessage, stopStream} = useAiChat();
   const [input, setInput] = useState('');
+  const flatListRef = useRef(null);
 
-  // 处理发送消息
   const handleSend = () => {
     if (input.trim()) {
       sendMessage(input);
@@ -149,7 +197,6 @@ const App = () => {
     }
   };
 
-  // 合并按钮：当 loading 时触发停止请求，否则发送消息
   const handleButtonPress = () => {
     if (loading) {
       stopStream();
@@ -158,39 +205,49 @@ const App = () => {
     }
   };
 
+  // 新消息加入时自动滚动到底部
+  useEffect(() => {
+    if (flatListRef.current) {
+      flatListRef.current.scrollToEnd({animated: true});
+    }
+  }, [conversation]);
+
+  const renderItem = ({item, index}) => {
+    const isLastMessage =
+      index === conversation.length - 1 && item.role === 'ai';
+    return (
+      <ChatBubble
+        key={index.toString()}
+        message={item.content}
+        isUser={item.role === 'user'}
+        loading={isLastMessage && loading}
+        time={item.time}
+      />
+    );
+  };
+
   return (
     <View style={styles.container}>
-      <ScrollView
-        style={styles.chatContainer}
-        contentContainerStyle={styles.chatContent}>
-        {conversation.map((msg, index) => {
-          // 判断最后一条消息是否为 AI 且正在加载
-          const isLastMessage =
-            index === conversation.length - 1 && msg.role === 'ai';
-          return (
-            <ChatBubble
-              key={index}
-              message={msg.content}
-              isUser={msg.role === 'user'}
-              loading={isLastMessage && loading}
-              time={msg.time}
-            />
-          );
-        })}
-      </ScrollView>
-
+      <FlatList
+        ref={flatListRef}
+        data={conversation}
+        keyExtractor={(item, index) => index.toString()}
+        renderItem={renderItem}
+        contentContainerStyle={styles.chatContent}
+      />
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
           value={input}
           onChangeText={setInput}
           placeholder="输入消息"
-          editable={!loading} // 正在加载时禁用输入框
+          editable={!loading}
         />
-        <Button
-          title={loading ? '停止请求' : '发送'}
-          onPress={handleButtonPress}
-        />
+        <TouchableOpacity
+          style={[styles.button, loading && styles.buttonStop]}
+          onPress={handleButtonPress}>
+          <Text style={styles.buttonText}>{loading ? '停止请求' : '发送'}</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -199,20 +256,17 @@ const App = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-    padding: 20,
-  },
-  chatContainer: {
-    flex: 1,
-    marginBottom: 20,
+    backgroundColor: '#f2f2f2',
+    padding: 10,
   },
   chatContent: {
     paddingVertical: 10,
+    paddingHorizontal: 5,
   },
   bubble: {
-    padding: 10,
-    borderRadius: 10,
-    marginVertical: 5,
+    padding: 12,
+    borderRadius: 12,
+    marginVertical: 6,
     maxWidth: '80%',
   },
   userBubble: {
@@ -220,30 +274,59 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
   },
   aiBubble: {
-    backgroundColor: '#ECECEC',
+    backgroundColor: '#ffffff',
     alignSelf: 'flex-start',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 1},
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+    elevation: 2,
   },
   bubbleText: {
     fontSize: 16,
+    color: '#333',
+  },
+  cursor: {
+    fontSize: 16,
+    color: '#000000',
   },
   timeText: {
     fontSize: 12,
     color: '#888',
-    marginTop: 5,
+    marginTop: 4,
     textAlign: 'right',
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderColor: '#ddd',
+    backgroundColor: '#fff',
   },
   input: {
     flex: 1,
     borderWidth: 1,
     borderColor: '#ccc',
-    borderRadius: 5,
-    paddingHorizontal: 10,
+    borderRadius: 25,
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    fontSize: 16,
+    backgroundColor: '#f9f9f9',
     marginRight: 10,
-    height: 40,
+  },
+  button: {
+    backgroundColor: '#007aff',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 25,
+  },
+  buttonStop: {
+    backgroundColor: '#ff3b30',
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
   },
 });
 
