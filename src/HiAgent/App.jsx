@@ -212,7 +212,123 @@ const App = () => {
 
     eventSourceRef.current = es;
 
-    // 处理SSE事件
+    // 通用的资源清理函数
+    const cleanupEventSource = () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.removeAllEventListeners();
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+      setLoading(false);
+    };
+
+    // 更新AI消息
+    const updateAIMessage = content => {
+      if (!content || !content.trim()) return;
+      setConversation(prev => {
+        const newConversation = [...prev];
+        // 查找最后一条AI消息的索引
+        const lastAiIndex = newConversation
+          .map((msg, idx) => ({...msg, idx}))
+          .reverse()
+          .find(item => item.role === 'ai')?.idx;
+        if (lastAiIndex !== undefined) {
+          newConversation[lastAiIndex] = {
+            ...newConversation[lastAiIndex],
+            content,
+          };
+        }
+        return newConversation;
+      });
+    };
+
+    // 处理不同事件类型
+    const handleMessageStart = data => {
+      console.log('开始接收消息，会话ID:', data.conversation_id);
+    };
+
+    const handleAgentThought = data => {
+      if (data.thought) {
+        aiMessage = data.thought;
+        updateAIMessage(aiMessage);
+      }
+    };
+
+    const handleAgentThoughtEnd = data => {
+      if (data.observation) {
+        try {
+          // 第一次解析 observation 字段
+          const observation = JSON.parse(data.observation);
+          if (observation.data) {
+            // 直接对 observation.data 使用 JSON.parse 去除最外层的转义和引号
+            const parsedData = JSON.parse(observation.data);
+            if (Array.isArray(parsedData) && parsedData[0]?.answer) {
+              // answer 本身也是一个 JSON 字符串
+              const marketDataStr = parsedData[0].answer;
+              const marketData = JSON.parse(marketDataStr);
+              if (Array.isArray(marketData)) {
+                // 格式化行情数据
+                const formattedMessage = marketData.reduce(
+                  (acc, item, index) => {
+                    if (index % 2 === 0) {
+                      const nextItem = marketData[index + 1];
+                      const currentFormat = `${
+                        item.symbolName
+                      } ${item.price.toFixed(2)}（${(
+                        item.dailyChangePercent * 100
+                      ).toFixed(2)}%）`;
+                      const nextFormat = nextItem
+                        ? ` ${nextItem.symbolName} ${nextItem.price.toFixed(
+                            2,
+                          )}（${(nextItem.dailyChangePercent * 100).toFixed(
+                            2,
+                          )}%）`
+                        : '';
+                      return acc + currentFormat + nextFormat + '\n';
+                    }
+                    return acc;
+                  },
+                  '\n',
+                );
+
+                const timestamp = marketData[0].marketTime;
+                const date = new Date(timestamp);
+                const timeStr = `\n(数据截止至：${
+                  date.getMonth() + 1
+                }月${date.getDate()}日 ${date.getHours()}:${String(
+                  date.getMinutes(),
+                ).padStart(2, '0')})`;
+                aiMessage = formattedMessage + timeStr;
+                updateAIMessage(aiMessage);
+              }
+            }
+          }
+        } catch (error) {
+          console.error(
+            '解析observation或行情数据失败:',
+            error,
+            data.observation,
+          );
+        }
+      }
+    };
+
+    const handleMessage = data => {
+      if (data.answer) {
+        aiMessage += data.answer;
+        updateAIMessage(aiMessage);
+      }
+    };
+
+    const handleDefault = data => {
+      const delta = data.Content || data.content;
+      if (delta) {
+        aiMessage += delta;
+        updateAIMessage(aiMessage);
+      }
+    };
+
+    // SSE 事件监听
     es.addEventListener('open', () => {
       console.log('SSE连接已打开');
     });
@@ -229,75 +345,19 @@ const App = () => {
         // 根据事件类型处理数据
         switch (eventType) {
           case 'message_start':
-            console.log('开始接收消息，会话ID:', data.conversation_id);
+            handleMessageStart(data);
             break;
-
           case 'agent_thought':
-            // 处理AI思考内容
-            if (data.thought) {
-              aiMessage = data.thought;
-              updateAIMessage(aiMessage);
-            }
+            handleAgentThought(data);
             break;
-
           case 'agent_thought_end':
-            // 处理AI思考结束，解析observation中的数据
-            if (data.observation) {
-              try {
-                const observation = JSON.parse(data.observation);
-                // 尝试从observation中提取答案
-                if (observation.data) {
-                  try {
-                    // 有时data是JSON字符串，需要解析
-                    if (
-                      typeof observation.data === 'string' &&
-                      observation.data.startsWith('"[')
-                    ) {
-                      // 处理双重转义的JSON字符串
-                      const cleanedData = observation.data
-                        .replace(/^"|"$/g, '')
-                        .replace(/\\"/g, '"');
-                      const parsedData = JSON.parse(cleanedData);
-                      if (Array.isArray(parsedData) && parsedData[0]?.answer) {
-                        aiMessage = parsedData[0].answer;
-                        updateAIMessage(aiMessage);
-                      }
-                    } else {
-                      // 直接解析为对象
-                      const dataObj =
-                        typeof observation.data === 'string'
-                          ? JSON.parse(observation.data)
-                          : observation.data;
-                      if (Array.isArray(dataObj) && dataObj[0]?.answer) {
-                        aiMessage = dataObj[0].answer;
-                        updateAIMessage(aiMessage);
-                      }
-                    }
-                  } catch (parseError) {
-                    console.log('解析observation.data失败:', parseError);
-                  }
-                }
-              } catch (parseError) {
-                console.log('解析observation失败:', parseError);
-              }
-            }
+            handleAgentThoughtEnd(data);
             break;
-
           case 'message':
-            // 处理普通消息内容
-            if (data.answer) {
-              aiMessage += data.answer;
-              updateAIMessage(aiMessage);
-            }
+            handleMessage(data);
             break;
-
           default:
-            // 处理其他内容增量
-            const delta = data.Content || data.content;
-            if (delta) {
-              aiMessage += delta;
-              updateAIMessage(aiMessage);
-            }
+            handleDefault(data);
             break;
         }
       } catch (error) {
@@ -305,70 +365,20 @@ const App = () => {
       }
     });
 
-    // 更新AI消息的辅助函数
-    const updateAIMessage = content => {
-      if (!content || !content.trim()) {
-        return;
-      }
-
-      setConversation(prev => {
-        // 找到最后一条AI消息并更新
-        const lastAiIndex = [...prev]
-          .reverse()
-          .findIndex(msg => msg.role === 'ai');
-        if (lastAiIndex >= 0) {
-          const actualIndex = prev.length - 1 - lastAiIndex;
-          const newConversation = [...prev];
-          newConversation[actualIndex] = {
-            ...newConversation[actualIndex],
-            content: content,
-          };
-          return newConversation;
-        }
-        return prev;
-      });
-    };
-
-    // 错误处理
     es.addEventListener('error', event => {
       console.error('SSE请求错误:', event);
-      setLoading(false);
-
-      // 清理资源
-      if (eventSourceRef.current) {
-        eventSourceRef.current.removeAllEventListeners();
-        eventSourceRef.current.close();
-        eventSourceRef.current = null;
-      }
-
-      // 可以添加错误提示
+      cleanupEventSource();
       updateAIMessage(aiMessage || '抱歉，连接出现问题，请稍后再试。');
     });
 
-    // 关闭事件
     es.addEventListener('close', () => {
       console.log('SSE连接已关闭');
-      setLoading(false);
-
-      // 清理资源
-      if (eventSourceRef.current) {
-        eventSourceRef.current.removeAllEventListeners();
-        eventSourceRef.current.close();
-        eventSourceRef.current = null;
-      }
+      cleanupEventSource();
     });
 
-    // 添加消息结束事件监听
     es.addEventListener('message_end', () => {
       console.log('消息接收完成');
-      setLoading(false);
-
-      // 清理资源
-      if (eventSourceRef.current) {
-        eventSourceRef.current.removeAllEventListeners();
-        eventSourceRef.current.close();
-        eventSourceRef.current = null;
-      }
+      cleanupEventSource();
     });
   };
 
