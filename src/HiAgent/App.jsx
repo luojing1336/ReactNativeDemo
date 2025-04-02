@@ -16,28 +16,54 @@ import {
   HIAGENT_DEFAULT_USER_ID,
 } from './apis/HIAGENT_CONFIG';
 
-// 打字机文本组件：逐字显示新加入的字符，并显示闪烁光标
+// 打字机效果组件
 const TypewriterText = ({text, speed = 50, loading}) => {
   const [displayedText, setDisplayedText] = useState('');
   const [showCursor, setShowCursor] = useState(true);
+  const lastTimeRef = useRef(0);
+  const animationRef = useRef(null);
+  const currentIndexRef = useRef(0);
 
+  // 使用requestAnimationFrame来处理文字动画，提高性能
   useEffect(() => {
-    if (text.length > displayedText.length) {
-      const interval = setInterval(() => {
-        setDisplayedText(prev => {
-          const next = text.slice(0, prev.length + 1);
-          if (next.length === text.length) {
-            clearInterval(interval);
-          }
-          return next;
-        });
-      }, speed);
-      return () => clearInterval(interval);
-    } else {
-      setDisplayedText(text);
+    if (!text) {
+      return;
     }
-  }, [displayedText.length, speed, text]);
 
+    currentIndexRef.current = 0;
+    setDisplayedText('');
+
+    const animate = timestamp => {
+      if (!lastTimeRef.current) {
+        lastTimeRef.current = timestamp;
+      }
+
+      const elapsed = timestamp - lastTimeRef.current;
+
+      if (elapsed > speed) {
+        lastTimeRef.current = timestamp;
+        if (currentIndexRef.current < text.length) {
+          const nextIndex = currentIndexRef.current + 1;
+          currentIndexRef.current = nextIndex;
+          setDisplayedText(text.slice(0, nextIndex));
+        }
+      }
+
+      if (currentIndexRef.current < text.length) {
+        animationRef.current = requestAnimationFrame(animate);
+      }
+    };
+
+    animationRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, [text, speed]);
+
+  // 光标闪烁效果
   useEffect(() => {
     const cursorInterval = setInterval(() => {
       setShowCursor(prev => !prev);
@@ -53,6 +79,7 @@ const TypewriterText = ({text, speed = 50, loading}) => {
   );
 };
 
+// 聊天气泡组件
 const ChatBubble = ({message, isUser, loading, time}) => {
   const formattedTime = time ? new Date(time).toLocaleTimeString() : '';
   return (
@@ -158,6 +185,10 @@ const App = () => {
     // 将用户消息添加到会话中
     const userMsg = {role: 'user', content: userMessage, time: new Date()};
     setConversation(prev => [...prev, userMsg]);
+
+    // 创建一个AI消息占位符
+    const placeholderMsg = {role: 'ai', content: '', time: new Date()};
+    setConversation(prev => [...prev, placeholderMsg]);
     setLoading(true);
 
     let aiMessage = '';
@@ -176,7 +207,7 @@ const App = () => {
         UserID: userId,
         QueryExtends: queryExtends,
       }),
-      pollingInterval: 0,
+      pollingInterval: 0, // 不使用轮询
     });
 
     eventSourceRef.current = es;
@@ -193,82 +224,161 @@ const App = () => {
 
       try {
         const data = JSON.parse(event.data);
-        switch (data.event) {
+        const {event: eventType} = data;
+
+        // 根据事件类型处理数据
+        switch (eventType) {
           case 'message_start':
             console.log('开始接收消息，会话ID:', data.conversation_id);
             break;
+
           case 'agent_thought':
-            console.log('AI思考过程:', data.thought);
+            // 处理AI思考内容
             if (data.thought) {
               aiMessage = data.thought;
-              updateConversation(aiMessage);
+              updateAIMessage(aiMessage);
             }
             break;
+
           case 'agent_thought_end':
+            // 处理AI思考结束，解析observation中的数据
             if (data.observation) {
               try {
-                const observationData = JSON.parse(data.observation);
-                if (observationData.data) {
-                  const answerData = JSON.parse(observationData.data);
-                  if (Array.isArray(answerData) && answerData[0]?.answer) {
-                    aiMessage = answerData[0].answer;
-                    updateConversation(aiMessage);
+                const observation = JSON.parse(data.observation);
+                // 尝试从observation中提取答案
+                if (observation.data) {
+                  try {
+                    // 有时data是JSON字符串，需要解析
+                    if (
+                      typeof observation.data === 'string' &&
+                      observation.data.startsWith('"[')
+                    ) {
+                      // 处理双重转义的JSON字符串
+                      const cleanedData = observation.data
+                        .replace(/^"|"$/g, '')
+                        .replace(/\\"/g, '"');
+                      const parsedData = JSON.parse(cleanedData);
+                      if (Array.isArray(parsedData) && parsedData[0]?.answer) {
+                        aiMessage = parsedData[0].answer;
+                        updateAIMessage(aiMessage);
+                      }
+                    } else {
+                      // 直接解析为对象
+                      const dataObj =
+                        typeof observation.data === 'string'
+                          ? JSON.parse(observation.data)
+                          : observation.data;
+                      if (Array.isArray(dataObj) && dataObj[0]?.answer) {
+                        aiMessage = dataObj[0].answer;
+                        updateAIMessage(aiMessage);
+                      }
+                    }
+                  } catch (parseError) {
+                    console.log('解析observation.data失败:', parseError);
                   }
                 }
               } catch (parseError) {
-                console.log('解析观察数据失败:', parseError);
+                console.log('解析observation失败:', parseError);
               }
             }
             break;
-          default:
-            // 处理其他类型的消息
-            if (data.Content || data.content) {
-              const delta = data.Content || data.content;
-              aiMessage += delta;
-              updateConversation(aiMessage);
+
+          case 'message':
+            // 处理普通消息内容
+            if (data.answer) {
+              aiMessage += data.answer;
+              updateAIMessage(aiMessage);
             }
+            break;
+
+          default:
+            // 处理其他内容增量
+            const delta = data.Content || data.content;
+            if (delta) {
+              aiMessage += delta;
+              updateAIMessage(aiMessage);
+            }
+            break;
         }
       } catch (error) {
         console.error('解析SSE数据失败:', error, '原始数据:', event.data);
       }
     });
 
-    // 提取更新会话的逻辑为单独函数
-    const updateConversation = content => {
-      if (!content.trim()) {
+    // 更新AI消息的辅助函数
+    const updateAIMessage = content => {
+      if (!content || !content.trim()) {
         return;
       }
+
       setConversation(prev => {
-        const last = prev[prev.length - 1];
-        if (last && last.role === 'ai') {
-          return [
-            ...prev.slice(0, prev.length - 1),
-            {...last, content: content},
-          ];
-        } else {
-          return [...prev, {role: 'ai', content: content, time: new Date()}];
+        // 找到最后一条AI消息并更新
+        const lastAiIndex = [...prev]
+          .reverse()
+          .findIndex(msg => msg.role === 'ai');
+        if (lastAiIndex >= 0) {
+          const actualIndex = prev.length - 1 - lastAiIndex;
+          const newConversation = [...prev];
+          newConversation[actualIndex] = {
+            ...newConversation[actualIndex],
+            content: content,
+          };
+          return newConversation;
         }
+        return prev;
       });
     };
 
+    // 错误处理
     es.addEventListener('error', event => {
       console.error('SSE请求错误:', event);
       setLoading(false);
-      es.removeAllEventListeners();
-      es.close();
+
+      // 清理资源
+      if (eventSourceRef.current) {
+        eventSourceRef.current.removeAllEventListeners();
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+
+      // 可以添加错误提示
+      updateAIMessage(aiMessage || '抱歉，连接出现问题，请稍后再试。');
     });
 
+    // 关闭事件
     es.addEventListener('close', () => {
+      console.log('SSE连接已关闭');
       setLoading(false);
-      es.removeAllEventListeners();
+
+      // 清理资源
+      if (eventSourceRef.current) {
+        eventSourceRef.current.removeAllEventListeners();
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+    });
+
+    // 添加消息结束事件监听
+    es.addEventListener('message_end', () => {
+      console.log('消息接收完成');
+      setLoading(false);
+
+      // 清理资源
+      if (eventSourceRef.current) {
+        eventSourceRef.current.removeAllEventListeners();
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
     });
   };
 
   // 停止正在进行的流响应
   const stopStream = () => {
     if (eventSourceRef.current) {
+      console.log('手动停止流');
       eventSourceRef.current.removeAllEventListeners();
       eventSourceRef.current.close();
+      eventSourceRef.current = null;
       setLoading(false);
     }
   };
@@ -276,8 +386,9 @@ const App = () => {
   // 处理发送按钮点击
   const handleSend = async () => {
     if (input.trim()) {
-      await sendMessage(input);
+      const message = input.trim();
       setInput('');
+      await sendMessage(message);
     }
   };
 
@@ -293,7 +404,10 @@ const App = () => {
   // 新消息加入时自动滚动到底部
   useEffect(() => {
     if (flatListRef.current && conversation.length > 0) {
-      flatListRef.current.scrollToEnd({animated: true});
+      // 使用setTimeout确保渲染完成后滚动
+      setTimeout(() => {
+        flatListRef.current.scrollToEnd({animated: true});
+      }, 100);
     }
   }, [conversation]);
 
@@ -333,7 +447,14 @@ const App = () => {
           multiline
         />
         <TouchableOpacity
-          style={[styles.button, loading && styles.buttonStop]}
+          style={[
+            styles.button,
+            loading
+              ? styles.buttonStop
+              : input.trim()
+              ? styles.buttonActive
+              : styles.buttonInactive,
+          ]}
           onPress={handleButtonPress}
           disabled={!input.trim() && !loading}>
           <Text style={styles.buttonText}>{loading ? '停止' : '发送'}</Text>
@@ -407,11 +528,17 @@ const styles = StyleSheet.create({
     maxHeight: 100,
   },
   button: {
-    backgroundColor: '#007aff',
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 25,
+  },
+  buttonActive: {
+    backgroundColor: '#007aff',
     opacity: 1,
+  },
+  buttonInactive: {
+    backgroundColor: '#007aff',
+    opacity: 0.5,
   },
   buttonStop: {
     backgroundColor: '#ff3b30',
