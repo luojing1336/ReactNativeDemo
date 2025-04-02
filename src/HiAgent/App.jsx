@@ -243,10 +243,6 @@ const App = () => {
     };
 
     // 处理不同事件类型
-    const handleMessageStart = data => {
-      console.log('开始接收消息，会话ID:', data.conversation_id);
-    };
-
     const handleAgentThought = data => {
       if (data.thought) {
         aiMessage = data.thought;
@@ -313,11 +309,28 @@ const App = () => {
       }
     };
 
+    const handleMessageOutputStart = data => {
+      console.log('开始接收消息输出，会话ID:', data.conversation_id);
+    };
+    const handleMessageStart = data => {
+      console.log('开始接收消息，会话ID:', data.conversation_id);
+    };
+
     const handleMessage = data => {
       if (data.answer) {
         aiMessage += data.answer;
         updateAIMessage(aiMessage);
       }
+    };
+
+    const handleMessageEnd = data => {
+      console.log('消息接收完成');
+      cleanupEventSource();
+    };
+
+    const handleMessageOutputEnd = data => {
+      console.log('消息输出完成');
+      cleanupEventSource();
     };
 
     const handleDefault = data => {
@@ -344,17 +357,25 @@ const App = () => {
 
         // 根据事件类型处理数据
         switch (eventType) {
-          case 'message_start':
-            handleMessageStart(data);
-            break;
           case 'agent_thought':
             handleAgentThought(data);
             break;
           case 'agent_thought_end':
             handleAgentThoughtEnd(data);
             break;
+          case 'message_output_start':
+            break;
+          case 'message_start':
+            handleMessageStart(data);
+            break;
           case 'message':
             handleMessage(data);
+            break;
+          case 'message_end':
+            handleMessageEnd(data);
+            break;
+          case 'massage_output_end':
+            handleMessageOutputEnd(data);
             break;
           default:
             handleDefault(data);
@@ -375,17 +396,12 @@ const App = () => {
       console.log('SSE连接已关闭');
       cleanupEventSource();
     });
-
-    es.addEventListener('message_end', () => {
-      console.log('消息接收完成');
-      cleanupEventSource();
-    });
   };
 
   // 停止正在进行的流响应
   const stopStream = () => {
     if (eventSourceRef.current) {
-      console.log('手动停止流');
+      console.log('手动停止SSE请求');
       eventSourceRef.current.removeAllEventListeners();
       eventSourceRef.current.close();
       eventSourceRef.current = null;
