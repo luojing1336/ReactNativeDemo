@@ -127,7 +127,7 @@ const Header = () => (
 );
 
 // 自定义Hook - 管理SSE连接和消息处理
-const useMessageHandler = () => {
+const useHiAgentHandler = () => {
   const [conversation, setConversation] = useState([]);
   const [loading, setLoading] = useState(false);
   const [conversationId, setConversationId] = useState(null);
@@ -450,7 +450,7 @@ const useMessageHandler = () => {
 
 const App = () => {
   const {conversation, loading, error, sendMessage, stopStream} =
-    useMessageHandler();
+    useHiAgentHandler();
 
   const [input, setInput] = useState('');
   const flatListRef = useRef(null);
